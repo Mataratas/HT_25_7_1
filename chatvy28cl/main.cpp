@@ -4,7 +4,7 @@ int main(int argc, char** argv) {
 	if (argc < 2) {
 		std::string path{ argv[0] };
 #ifdef __linux__
-		auto const pos = path.find_last_of('//');
+		auto const pos = path.find_last_of('/');
 #elif defined(_WIN64) || defined(_WIN32)
 		auto const pos = path.find_last_of('\\');
 #endif // __linux__

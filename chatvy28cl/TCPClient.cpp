@@ -9,8 +9,12 @@ TCPClient::TCPClient(const char* peer) :_srv_name(peer) {
 }
 //--------------------------------------------------------------------------------------------------
 TCPClient::~TCPClient(){
+#ifdef __linux__
+	close(_socket);
+#else
 	closesocket(_socket);
 	WSACleanup();
+#endif	
 }
 //--------------------------------------------------------------------------------------------------
 auto TCPClient::_init() -> void {
@@ -18,7 +22,7 @@ auto TCPClient::_init() -> void {
 	_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (_socket < 0) {
 		printf("failed to create socket with error: %s\n", strerror(errno));
-		_last_err_code = strerror(errno);
+		_last_err_code = errno;
 		return;
 	}
 	struct sockaddr_in svr_adress {};
@@ -28,11 +32,11 @@ auto TCPClient::_init() -> void {
 	svr_adress.sin_addr.s_addr = inet_addr(_srv_name.c_str());
 	svr_adress.sin_port = htons(PORT);
 
-	conn = connect(_socket, static_cast<struct sockaddr*>(&svr_adress), sizeof(svr_adress));
+	conn = connect(_socket, (struct sockaddr*)&svr_adress, sizeof(svr_adress));
 	if (conn < 0) {
 		close(_socket);
 		printf("failed to connect to server with error: %s\n", strerror(errno));
-		_last_err_code = strerror(errno);
+		_last_err_code = errno;
 		return;
 	}
 #elif defined(_WIN64) || defined(_WIN32)
@@ -94,14 +98,12 @@ auto TCPClient::_init() -> void {
 //--------------------------------------------------------------------------------------------------
 void TCPClient::start()
 {
-	
-	
 	if (!_last_err_code) {
 		size_t bytes_in{}, bytes_out{}, iRet{};
 		bool exit_loop{ false }, server_down{false};
 		std::string input;
 		IOMSG _msg;
-		UINT8 _msg_id{};
+		uint8_t _msg_id{};
 
 		if (!_send_to_server(_msg)) {
 			return;
@@ -117,14 +119,18 @@ void TCPClient::start()
 
 			if (bytes_in > 0) {
 				memcpy(&_msg, _buffer, _buf_len);
-				_msg_id = static_cast<UINT8>(_msg.mtype);
+				_msg_id = static_cast<uint8_t>(_msg.mtype);
 				switch (_msg_id) {
 				case eWelcome:
 					std::cout << _msg.body;
 					std::getline(std::cin, input);
 					if (input.size() == 1 && input.at(0) == 'x') {
 						_msg.mtype = eQuit;
+#ifdef __linux__
+						strcpy(_msg.body, "Good buy\n");
+#else
 						strcpy_s(_msg.body, "Good buy\n");
+#endif
 					}else {
 						clear_message(_msg);
 						if (input.size() == 1 && input.at(0) == 'y')
@@ -138,12 +144,12 @@ void TCPClient::start()
 					std::getline(std::cin, input);
 					if (input.size() == 1 && input.at(0) == 'x') {
 						_msg.mtype = eQuit;
-						strcpy_s(_msg.body, "Good buy\n");
+						strcpy(_msg.body, "Good buy\n");
 					}else{
 						clear_message(_msg);
 						_msg.mtype = eLogin;
-						strcpy_s(_msg.body, input.c_str());
-						strcpy_s(_msg.user, "n"); //new user
+						strcpy(_msg.body, input.c_str());
+						strcpy(_msg.user, "n"); //new user
 					}
 					break;
 				case eLogin:
@@ -151,13 +157,13 @@ void TCPClient::start()
 					std::getline(std::cin, input);
 					if (input.size() == 1 && input.at(0) == 'x') {
 						_msg.mtype = eQuit;
-						strcpy_s(_msg.body, "Good buy\n");
+						strcpy(_msg.body, "Good buy\n");
 					}
 					else {  
 						clear_message(_msg);
 						_msg.mtype = eLogin;
-						strcpy_s(_msg.body, input.c_str());
-						strcpy_s(_msg.user, "e"); //existing user
+						strcpy(_msg.body, input.c_str());
+						strcpy(_msg.user, "e"); //existing user
 					}
 					break;
 
@@ -166,12 +172,12 @@ void TCPClient::start()
 					std::getline(std::cin, input);
 					if (input.size() == 1 && input.at(0) == 'x') {
 						_msg.mtype = eQuit;
-						strcpy_s(_msg.body, "Good buy\n");
+						strcpy(_msg.body, "Good buy\n");
 					}
 					else {
 						clear_message(_msg);
 						_msg.mtype = ePassword;
-						strcpy_s(_msg.body, create_pwd_hash(input).c_str());
+						strcpy(_msg.body, create_pwd_hash(input).c_str());
 					}
 
 					break;
@@ -180,13 +186,13 @@ void TCPClient::start()
 					std::getline(std::cin, input);
 					if (input.size() == 1 && input.at(0) == 'x') {
 						_msg.mtype = eQuit;
-						strcpy_s(_msg.body, "Good buy\n");
+						strcpy(_msg.body, "Good buy\n");
 					}
 					else {
 						clear_message(_msg); 
 						_msg.mtype = ePassword;
-						strcpy_s(_msg.body, create_pwd_hash(input).c_str());
-						strcpy_s(_msg.user, "e"); //existing user
+						strcpy(_msg.body, create_pwd_hash(input).c_str());
+						strcpy(_msg.user, "e"); //existing user
 					}
 					break;
 
@@ -195,16 +201,16 @@ void TCPClient::start()
 					std::getline(std::cin, input);
 					if (input.size() == 1 && input.at(0) == 'x') {
 						_msg.mtype = eQuit;
-						strcpy_s(_msg.body, "Good buy\n");
+						strcpy(_msg.body, "Good buy\n");
 					}
 					else {						
 						if (*_msg.user == 'n')
 							_msg.mtype = eChooseLogin;
 						else {
 							_msg.mtype = eLogin;
-							strcpy_s(_msg.user, "e"); //existing user
+							strcpy(_msg.user, "e"); //existing user
 						}
-						strcpy_s(_msg.body, input.c_str());						
+						strcpy(_msg.body, input.c_str());						
 					}
 					break;
 				case eWrongPassword:
@@ -212,13 +218,13 @@ void TCPClient::start()
 					std::getline(std::cin, input);
 					if (input.size() == 1 && input.at(0) == 'x') {
 						_msg.mtype = eQuit;
-						strcpy_s(_msg.body, "Good buy\n");
+						strcpy(_msg.body, "Good buy\n");
 					}
 					else {
 						clear_message(_msg);
 						_msg.mtype = ePassword;
-						strcpy_s(_msg.body, create_pwd_hash(input).c_str());
-						strcpy_s(_msg.user, "e"); //existing user
+						strcpy(_msg.body, create_pwd_hash(input).c_str());
+						strcpy(_msg.user, "e"); //existing user
 					}
 
 					break;
@@ -246,7 +252,7 @@ void TCPClient::start()
 					CMessage::show_unpacked(_msg.body, message_id);
 					clear_message(_msg);
 					_msg.mtype = eGetNextMsg;
-					strcpy_s(_msg.body, message_id.c_str()); //this message must be marked as viewed by server
+					strcpy(_msg.body, message_id.c_str()); //this message must be marked as viewed by server
 					break;
 				}
 				case eMsgMainMenu:
@@ -255,29 +261,29 @@ void TCPClient::start()
 					std::getline(std::cin, input);
 					if (input.size() == 1 && input.at(0) == 'x') {
 						_msg.mtype = eQuit;
-						strcpy_s(_msg.body, "Good buy\n");
+						strcpy(_msg.body, "Good buy\n");
 					}else {
 						if (input.at(0) == 'l') {
 							_msg.mtype = eLogOut;
 						}else if (input.at(0) == 'u') { //write to user
 							clear_message(_msg);
 							_msg.mtype = eSendToUser;
-							strcpy_s(_msg.user,std::to_string(_usr_db_id).c_str());
+							strcpy(_msg.user,std::to_string(_usr_db_id).c_str());
 						}else if (input.at(0) == 'a') { //write to all
 							std::cout << "Type your message (x - exit):\n";
 							std::getline(std::cin, input);
 							if (input.size() == 1 && input.at(0) == 'x') {
 								_msg.mtype = eQuit;
-								strcpy_s(_msg.body, "Good buy\n");
+								strcpy(_msg.body, "Good buy\n");
 							}else{
 								clear_message(_msg);
 								_msg.mtype = eSendToAll;
-								strcpy_s(_msg.body, input.c_str());
-								strcpy_s(_msg.user, std::to_string(_usr_db_id).c_str());
+								strcpy(_msg.body, input.c_str());
+								strcpy(_msg.user, std::to_string(_usr_db_id).c_str());
 							}
 						}else {
 							_msg.mtype = eNone;
-							strcpy_s(_msg.body, "Undefined choice\n");
+							strcpy(_msg.body, "Undefined choice\n");
 						}
 					}
 					break;
@@ -310,7 +316,7 @@ void TCPClient::start()
 
 					if (input.at(0) == 'x') {
 						_msg.mtype = eQuit;
-						strcpy_s(_msg.body, "Good buy\n");
+						strcpy(_msg.body, "Good buy\n");
 					}
 					else {
 						size_t uid{};
@@ -337,13 +343,13 @@ void TCPClient::start()
 						}
 						if (input.at(0) == 'x') {
 							_msg.mtype = eQuit;
-							strcpy_s(_msg.body, "Good buy\n");
+							strcpy(_msg.body, "Good buy\n");
 						}
 						else {
 							clear_message(_msg);
 							_msg.mtype = eSendToUserMsgReady;
-							strcpy_s(_msg.body, input.c_str());
-							strcpy_s(_msg.user, std::to_string(uid).c_str());
+							strcpy(_msg.body, input.c_str());
+							strcpy(_msg.user, std::to_string(uid).c_str());
 						}
 					}
 
@@ -370,21 +376,27 @@ void TCPClient::start()
 #elif defined(_WIN64) || defined(_WIN32)
 				closesocket(_socket);
 				WSACleanup();
-#endif /
-				closesocket(_socket);
-				WSACleanup();
+#endif 
 				return;
 			}else {
+#ifdef __linux__
+				printf("recv failed: %s\n", strerror(errno));
+#else
 				printf("recv failed: %d\n", WSAGetLastError());
+#endif				
 #ifdef __linux__
 				close(_socket);
 #elif defined(_WIN64) || defined(_WIN32)
 				closesocket(_socket);
 				WSACleanup();
-#endif /
+#endif 
 				return;
 			}
+#ifdef __linux__			
+			sleep(5);
+#elif defined(_WIN64) || defined(_WIN32)
 			Sleep(5);
+#endif
 		}
 	}else
 		std::cout << "\nClient init failure\n";
@@ -423,7 +435,7 @@ auto TCPClient::_send_to_server(IOMSG& msg) -> bool {
 	size_t bytes_out{};
 #ifdef __linux__
 	bytes_out = write(_socket, reinterpret_cast<void*>(&msg), sizeof(IOMSG));
-	if (!bytes_sent) {
+	if (!bytes_out) {
 		close(_socket);
 		printf("Failed to send authorization request. Exiting..\n");
 		exit(1);

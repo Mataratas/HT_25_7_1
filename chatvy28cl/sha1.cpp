@@ -2,33 +2,33 @@
 //=====================================================================================================
 uint cycle_shift_left(uint val, int bit_count) {
     return (val << bit_count | val >> (32 - bit_count));
-} // циклический сдвиг влево
+} // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 //------------------------------------------------------------------------------------------------------
 uint bring_to_human_view(uint val) {
     return  ((val & 0x000000FF) << 24) |
         ((val & 0x0000FF00) << 8) |
         ((val & 0x00FF0000) >> 8) |
         ((val & 0xFF000000) >> 24);
-} // перевернуть представление числа в памяти в человеческий вид
+} // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
 //------------------------------------------------------------------------------------------------------
 uint* sha1(char* message, uint msize_bytes) {
-    // вывод сообщения побайтово
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     //for (int i = 0; i < msize_bytes; i++) {
     //    std::cout << std::hex << (uint)message[i] << " ";
     //}
     //std::cout << std::endl;
 
-    //инициализация
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     uint A = H[0];
     uint B = H[1];
     uint C = H[2];
     uint D = H[3];
     uint E = H[4];
 
-    // подсчет целого числа блоков
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     uint totalBlockCount = msize_bytes / one_block_size_bytes;
 
-    // подсчет, сколько байт нужно, чтобы дополнить последний блок
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
     uint needAdditionalBytes =
         one_block_size_bytes - (msize_bytes - totalBlockCount * one_block_size_bytes);
 
@@ -40,33 +40,33 @@ uint* sha1(char* message, uint msize_bytes) {
         totalBlockCount += 1;
     }
 
-    // размер дополненного по всем правилам сообщения
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     uint extendedMessageSize = msize_bytes + needAdditionalBytes;
 
-    // выделяем новый буфер и копируем в него исходный
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     unsigned char* newMessage = new unsigned char[extendedMessageSize];
     memcpy(newMessage, message, msize_bytes);
 
-    // первый бит ставим '1', остальные обнуляем
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ '1', пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     newMessage[msize_bytes] = 0x80;
     memset(newMessage + msize_bytes + 1, 0, needAdditionalBytes - 1);
 
-    // задаем длину исходного сообщения в битах
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
     uint* ptr_to_size = (uint*)(newMessage + extendedMessageSize - 4);
     *ptr_to_size = bring_to_human_view(msize_bytes * 8);
 
     ExpendBlock exp_block;
-    //раунды поехали
+    //пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     for (int i = 0; i < totalBlockCount; i++) {
 
-        // берем текущий блок и дополняем его
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         unsigned char* cur_p = newMessage + one_block_size_bytes * i;
         Block block = (Block)cur_p;
-        // первые 16 4байтовых чисел
+        // пїЅпїЅпїЅпїЅпїЅпїЅ 16 4пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         for (int j = 0; j < one_block_size_uints; j++) {
             exp_block[j] = bring_to_human_view(block[j]);
         }
-        // следующие 64...
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 64...
         for (int j = one_block_size_uints; j < block_expend_size_uints; j++) {
             exp_block[j] =
                 exp_block[j - 3] ^
@@ -76,18 +76,18 @@ uint* sha1(char* message, uint msize_bytes) {
             exp_block[j] = cycle_shift_left(exp_block[j], 1);
         }
 
-        // инициализация 
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
         uint a = H[0];
         uint b = H[1];
         uint c = H[2];
         uint d = H[3];
         uint e = H[4];
 
-        // пересчитываем
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         for (int j = 0; j < block_expend_size_uints; j++) {
             uint f;
             uint k;
-            // в зависимости от раунда считаем по-разному
+            // пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (j < 20) {
                 f = (b & c) | ((~b) & d);
                 k = 0x5A827999;
@@ -105,7 +105,7 @@ uint* sha1(char* message, uint msize_bytes) {
                 k = 0xCA62C1D6;
             }
 
-            // перемешивание
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             uint temp = cycle_shift_left(a, 5) + f + e + k + exp_block[j];
             e = d;
             d = c;
@@ -114,7 +114,7 @@ uint* sha1(char* message, uint msize_bytes) {
             a = temp;
         }
 
-        // пересчитываем
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         A = A + a;
         B = B + b;
         C = C + c;
@@ -128,7 +128,7 @@ uint* sha1(char* message, uint msize_bytes) {
         digest[3] = D;
         digest[4] = E;
 
-        // чистим за собой
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         delete[] newMessage;
         return digest;
     }
@@ -157,11 +157,22 @@ const std::string hash_to_string(uint* hash) {
     char buf[48]{ (char)'/0' };
     char tmp[10]{ (char)'/0' };
     for (int i = 0; i < SHA1HASHLENGTHUINTS; i++) {
+#ifdef __linux__
+        sprintf(tmp, "%X-", hash[i]);
+#else
         sprintf_s(tmp, "%X-", hash[i]);
+#endif        
         if (!i)
+#ifdef __linux__        
+            strcpy(buf, tmp);
+        else
+            strcat(buf, tmp);
+#else
             strcpy_s(buf, tmp);
         else
             strcat_s(buf, tmp);
+
+#endif
     }
     std::string res{ buf };
     return res.substr(0, res.size() - 1);

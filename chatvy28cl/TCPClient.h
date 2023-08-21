@@ -29,8 +29,11 @@ public:
 private:
 #if defined(_WIN64) || defined(_WIN32)
 	WSADATA _wsaData;
-#endif
 	SOCKET _socket{ INVALID_SOCKET };
+#elif defined(__linux__)
+	int _socket{-1};	
+#endif
+	
 	int _last_err_code{ 0 };
 	char _buffer[sizeof(IOMSG)]{'\0'};
 	size_t _buf_len{ sizeof(IOMSG) };

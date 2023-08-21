@@ -19,9 +19,12 @@ public:
 	auto init_ok()->bool const { return !_err_cnt;};
 
 private:
-	SOCKET _socket{ INVALID_SOCKET };
+	
 #if defined(_WIN64) || defined(_WIN32)
+	SOCKET _socket{ INVALID_SOCKET };
 	WSAData _wData;
+#elif defined(__linux__)
+	int _socket{-1};	
 #endif
 	std::string _name{ "localhost" };
 	std::string _user,_pwd_hash;
@@ -30,9 +33,13 @@ private:
 	std::shared_ptr<DBCTX>_hDB;
 	std::unordered_map<size_t, std::shared_ptr<CUser>> _um_users;
 	std::map<std::string, std::shared_ptr<CMessage>> _msg_pool;
-
+#if defined(_WIN64) || defined(_WIN32)
 	auto _send_to_client(SOCKET,IOMSG&)->bool;
 	auto _process_client_msg(SOCKET,IOMSG&, bool&) -> bool;
+#elif defined(__linux__)
+	auto _send_to_client(int,IOMSG&)->bool;
+	auto _process_client_msg(int,IOMSG&, bool&) -> bool;
+#endif
 	auto _login_used(const std::string&) -> bool;
 	auto _is_valid_user_pwd(const std::string& pwd) -> bool;
 	auto _db_init() -> bool;

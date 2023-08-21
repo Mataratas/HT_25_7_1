@@ -3,11 +3,8 @@
 CTCPServer::CTCPServer() {
 	if(!_db_init()) _err_cnt++;
 	if (!_err_cnt) {
-#ifdef _DEBUG
-		printf("Server instance created\n");
-#endif // DEBUG
 #ifdef __linux__
-		struct sockaddr_in svr_adress;
+		struct sockaddr_in svr_adress,_client_adress;
 		_socket = socket(AF_INET, SOCK_STREAM, 0);
 		if (_socket < 0) {
 			fprintf(stderr, "Could not create socket: %s\n", strerror(errno));
@@ -18,14 +15,14 @@ CTCPServer::CTCPServer() {
 		const int enable = 1;
 		socklen_t cl_length{ sizeof(_client_adress) };
 
-		int iResult = setsockopt(_socket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, &enable, sizeof(int));
+		int iResult = setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
 		if (iResult < 0) {
-			close(_hSocket);
+			close(_socket);
 			fprintf(stderr, "Could not set the socket option: %s\n", strerror(errno));
 			_err_cnt++;
 			return;
 		}
-		memset(svr_adress, 0, sizeof(svr_adress));
+		memset(&svr_adress, 0, sizeof(svr_adress));
 
 		svr_adress.sin_family = AF_INET;
 		svr_adress.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -42,12 +39,10 @@ CTCPServer::CTCPServer() {
 			fprintf(stderr, "Could not set the backlog: %s\n", strerror(errno));
 			_err_cnt++;
 			return;
-		}
-		else {
+		}else {
 			std::cout << "Server is listening...\n";
 		}
-	}
-
+	
 #elif defined(_WIN64) || defined(_WIN32)
 		WSADATA _WSA;
 		int iRes = WSAStartup(MAKEWORD(2, 2), &_WSA);
@@ -112,19 +107,20 @@ CTCPServer::CTCPServer() {
 			WSACleanup();
 			_err_cnt++;
 			return;
-		}printf("The server is listening...\n");
+		}
+		
+		printf("The server is listening...\n");		
 #endif
 	}
 }
 //----------------------------------------------------------------------------------------------------------------
-CTCPServer::~CTCPServer() {
+CTCPServer::~CTCPServer(){
 #ifdef __linux__
 	close(_socket);
 #elif defined(_WIN64) || defined(_WIN32)
 	closesocket(_socket);
 	WSACleanup();
 #endif
-
 }
 //----------------------------------------------------------------------------------------------------------------
 auto CTCPServer::_db_init() -> bool {
@@ -195,16 +191,21 @@ auto CTCPServer::process_clients()->bool {
 	char rcv_buf[sizeof(IOMSG)]{'\0'};
 	bool exit_loop{ false }, stop_server{false};
 	IOMSG _msg;
-	UINT8 _msg_id{};
+	uint8_t _msg_id{};
 
 	while (!stop_server)
 	{
+#if defined(_WIN64) || defined(_WIN32)		
 		SOCKET _cl_socket;
 		SOCKADDR_IN addr_c;
-		char cl_ip[15]{'/0'};
+#elif defined(__linux__) 
+		int _cl_socket;
+		struct sockaddr_in addr_c;
+#endif
+		char cl_ip[15]{(char)'/0'};
 		exit_loop = false;
 		int addrlen = sizeof(addr_c);
-		_cl_socket = accept(_socket, reinterpret_cast<struct sockaddr*>(&addr_c), &addrlen);
+		_cl_socket = accept(_socket, (struct sockaddr*)&addr_c, &addrlen);
 #ifdef __linux__
 		if (_cl_socket < 0) {
 			close(_socket);
@@ -222,8 +223,17 @@ auto CTCPServer::process_clients()->bool {
 		}
 #endif // __linux__
 		else {
+#if defined(_WIN64) || defined(_WIN32)			
+			char* WSAAPI cip = inet_ntoa(addr_c.sin_addr);
+			if (cip)
+				std::cout << BOLDCYAN << "Incoming connection from client:" << cip << RESET << std::endl;
+			else
+				std::cout << BOLDRED << "inet_ntoa failed" << RESET << std::endl;
+
+#else
 			inet_ntop(AF_INET, &(addr_c.sin_addr), cl_ip, 15);
-			printf("Incoming connection from client:%s\n", cl_ip);
+#endif	
+			std::cout << BOLDCYAN << "Incoming connection from client:"<< cl_ip << RESET << std::endl;
 		}
 
 		while (!exit_loop) {
@@ -234,7 +244,7 @@ auto CTCPServer::process_clients()->bool {
 #endif // __linux__
 			if (bytes_in) {
 				memcpy(&_msg, rcv_buf, buf_len);
-				if(_process_client_msg(_cl_socket,_msg, exit_loop));
+				if(_process_client_msg(_cl_socket,_msg, exit_loop))
 				_send_to_client(_cl_socket,_msg);
 				if (exit_loop) {
 					printf("Session terminated.\n");
@@ -248,14 +258,22 @@ auto CTCPServer::process_clients()->bool {
 		closesocket(_cl_socket);
 #endif // __linux__
 			
-	}		
+	}	
+	return true;	
 }
 //----------------------------------------------------------------------------------------------------------------
-auto CTCPServer::_send_to_client(SOCKET _cl_socket,IOMSG& msg)->bool {
+auto CTCPServer::_send_to_client(
+#if defined(_WIN64) || defined(_WIN32)	
+	SOCKET _cl_socket,
+#elif defined(__linux__)
+	int _cl_socket,
+#endif
+	IOMSG& msg)->bool {
+
 	size_t bytes_out{};
 #ifdef __linux__
 	bytes_out = write(_cl_socket, reinterpret_cast<void*>(&msg), sizeof(IOMSG));
-	if (!bytes_sent) {
+	if (!bytes_out) {
 		close(_cl_socket);
 		printf("Failed to send authorization request. Exiting..\n");
 		exit(1);
@@ -274,22 +292,28 @@ auto CTCPServer::_send_to_client(SOCKET _cl_socket,IOMSG& msg)->bool {
 	return true;
 }
 //--------------------------------------------------------------------------------------
-auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loop) -> bool {
+auto CTCPServer::_process_client_msg(
+#if defined(_WIN64) || defined(_WIN32)	
+	SOCKET _cl_socket,
+#elif defined(__linux__)
+	int _cl_socket,
+#endif
+	IOMSG& in, bool& exit_loop) -> bool {
 
 	bool existing_user{ false };
 	switch (in.mtype) {
 	case eAuth:
 		in.mtype = eWelcome;
 		memset(in.body, '\0', MSG_LENGTH);
-		strcpy_s(in.body,"Welcome to chat session. New user?(y/n, x - exit):\n");
+		strcpy(in.body,"Welcome to chat session. New user?(y/n, x - exit):\n");
 		break;
 	case eNewUser:
 		in.mtype = eChooseLogin;
-		strcpy_s(in.body, "Choose your login(x - exit):\n");
+		strcpy(in.body, "Choose your login(x - exit):\n");
 		break;
 	case eExistingUser:
 		in.mtype = eLogin;
-		strcpy_s(in.body, "Type your login(x - exit):\n");
+		strcpy(in.body, "Type your login(x - exit):\n");
 		break;
 	case eLogin:
 		existing_user = *in.user == 'e';
@@ -297,19 +321,19 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 			if (_login_used(in.body)) {
 				_user = in.body;
 				in.mtype = ePassword;
-				strcpy_s(in.body, "Type your password(x - exit):\n");
+				strcpy(in.body, "Type your password(x - exit):\n");
 			}else {
 				in.mtype = eWrongLogin;
-				strcpy_s(in.body, "Wrong login. Try again(x - exit):\n");
+				strcpy(in.body, "Wrong login. Try again(x - exit):\n");
 			}
 		}else{
 			if (_login_used(in.body)) {
-				strcpy_s(in.body, "Login provided is already used. Choose another(x - exit):\n");
+				strcpy(in.body, "Login provided is already used. Choose another(x - exit):\n");
 				in.mtype = eWrongLogin;
 			}else {
 				_user = in.body;
 				in.mtype = eChoosePassword;
-				strcpy_s(in.body, "Choose your password(x - exit):\n");
+				strcpy(in.body, "Choose your password(x - exit):\n");
 			}
 		}
 		break;
@@ -327,22 +351,22 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 					clear_message(in);
 					
 					in.mtype = eAuthOK;
-					strcpy_s(in.body, "Login successful. (x - exit):\n");
-					strcpy_s(in.user, std::to_string(_usr_db_id).c_str());
+					strcpy(in.body, "Login successful. (x - exit):\n");
+					strcpy(in.user, std::to_string(_usr_db_id).c_str());
 				}else {
 					in.mtype = eWrongPassword;
-					strcpy_s(in.body, "Invalid password. Type again(x - exit):\n");
+					strcpy(in.body, "Invalid password. Type again(x - exit):\n");
 				}
 			}else{
 				clear_message(in);
 				in.mtype = eQuit;
-				strcpy_s(in.body, "Server failed to reconfirm user existence:\n");
+				strcpy(in.body, "Server failed to reconfirm user existence:\n");
 
 			}
 		}else{
 			if (*in.body == '\0') {
 				in.mtype = eWrongPassword;
-				strcpy_s(in.body, "Empty password not permited. Type one(x - exit):\n");
+				strcpy(in.body, "Empty password not permited. Type one(x - exit):\n");
 			}else {
 				uint64_t id;
 				if (_hDB->add_user(_user.c_str(), id)) {
@@ -353,20 +377,20 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 						_um_users.emplace(std::make_pair(_hash_func(_user), uptr));
 						clear_message(in);
 						in.mtype = eAuthOK;
-						strcpy_s(in.body, "Registration successful.\n");
-						strcpy_s(in.user, std::to_string(_usr_db_id).c_str());
+						strcpy(in.body, "Registration successful.\n");
+						strcpy(in.user, std::to_string(_usr_db_id).c_str());
 					}else {
 						clear_message(in);
 						in.mtype = eQuit;
-						strcpy_s(in.body, "Failed to save user pwd:");
-						strcat_s(in.body,_hDB->get_last_error());
-						strcat_s(in.body, "\n");
+						strcpy(in.body, "Failed to save user pwd:");
+						strcat(in.body,_hDB->get_last_error());
+						strcat(in.body, "\n");
 					}
 
 				}else {
 					in.mtype = eQuit;
 					memset(in.body, '\0', MSG_LENGTH);
-					strcpy_s(in.body, "Failed to create user record in database!\n");
+					strcpy(in.body, "Failed to create user record in database!\n");
 				}
 			}
 		}
@@ -376,13 +400,13 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 		if (_msg_pool.empty()) {
 			clear_message(in);
 			in.mtype = eNoMsg;
-			strcpy_s(in.body, "You have no new messages.\n");
+			strcpy(in.body, "You have no new messages.\n");
 		}else {
 			clear_message(in);
 			auto curr_msg = _msg_pool.begin();
 			in.mtype = eMsgNext;
-			strcpy_s(in.body, curr_msg->second->serialize_msg().c_str());
-			strcpy_s(in.user, "You have new messages:\n");
+			strcpy(in.body, curr_msg->second->serialize_msg().c_str());
+			strcpy(in.user, "You have new messages:\n");
 			_msg_pool.erase(curr_msg);
 		}
 		break;
@@ -403,7 +427,7 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 			clear_message(in);
 			auto curr_msg = _msg_pool.begin();
 			in.mtype = eMsgNext;
-			strcpy_s(in.body, curr_msg->second->serialize_msg().c_str());
+			strcpy(in.body, curr_msg->second->serialize_msg().c_str());
 			_msg_pool.erase(curr_msg);
 		}
 		break;
@@ -411,14 +435,14 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 	case eGetMainMenu:
 		clear_message(in);
 		in.mtype = eMsgMainMenu;
-		strcpy_s(in.body, "Choose action : \n\twrite to user(u)\n\twrite to all(a)\n\tLog out(l)\n\tQuit(x) :\n");
+		strcpy(in.body, "Choose action : \n\twrite to user(u)\n\twrite to all(a)\n\tLog out(l)\n\tQuit(x) :\n");
 		break;
 	case eLogOut:
 		_user.clear();
 		_pwd_hash.clear();
 		_usr_db_id = 0;
 		in.mtype = eLogin;
-		strcpy_s(in.body, "Type your login(x - exit):\n");
+		strcpy(in.body, "Type your login(x - exit):\n");
 		break;
 
 	case eSendToAll: 
@@ -427,10 +451,10 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 		clear_message(in);
 		in.mtype = eMsgDelivered;
 		if (msg_sent) {
-			strcpy_s(in.body, "messages sent OK\n");
+			strcpy(in.body, "messages sent OK\n");
 		}
 		else
-			strcpy_s(in.body, "Failed to send messages\n");
+			strcpy(in.body, "Failed to send messages\n");
 		break;
 	}
 	case eSendToUser:
@@ -439,11 +463,11 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 		if (!_hDB->pack_users(in.user, available_users)) {
 			clear_message(in);
 			in.mtype = eQuit;
-			strcpy_s(in.body, "Sorry, no users available.\n");
+			strcpy(in.body, "Sorry, no users available.\n");
 		}
 		else {
 			in.mtype = eAvailableUsers;
-			strcpy_s(in.body, available_users.c_str());
+			strcpy(in.body, available_users.c_str());
 		}
 		break;
 	}
@@ -452,11 +476,11 @@ auto CTCPServer::_process_client_msg(SOCKET _cl_socket,IOMSG& in, bool& exit_loo
 		if (_hDB->deliver_msg(in.body, std::to_string(_usr_db_id).c_str(), in.user)) {
 			clear_message(in);
 			in.mtype = eMsgDelivered;
-			strcpy_s(in.body, "The message sent\n");
+			strcpy(in.body, "The message sent\n");
 		}else {
 			clear_message(in);
 			in.mtype = eErrMsgNotDelivered;
-			strcpy_s(in.body, "Failed to send message\n");
+			strcpy(in.body, "Failed to send message\n");
 		}
 		break;
 	}

@@ -1,21 +1,17 @@
 #pragma once
 #include <iostream>
+#include <memory>
 //#pragma comment(lib,"libmysql.lib")
 
 #ifdef __linux__
 #include <mysql/mysql.h>
-#elif defined(_WIN32) || defined(_WIN64)
+#elif defined(_WIN64) || defined(_WIN32)
 #include <windows.h>
 #include <iomanip>
 #include <string>
-#include <sqlext.h>
-#include <sqltypes.h>
-#include <sql.h>
 #include <sal.h>
 #include <tchar.h>
-#include "mysql.h"
-#else
-#error Not implemented!
+#include <mysql.h>
 #endif
 
 #include <vector>

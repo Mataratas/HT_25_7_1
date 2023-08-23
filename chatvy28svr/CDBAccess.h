@@ -4,7 +4,8 @@
 //#pragma comment(lib,"libmysql.lib")
 
 #ifdef __linux__
-#include <mysql/mysql.h>
+//#include <mysql/mysql.h>
+#include <mysql.h>
 #elif defined(_WIN64) || defined(_WIN32)
 #include <windows.h>
 #include <iomanip>

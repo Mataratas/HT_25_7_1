@@ -66,7 +66,6 @@ struct cHasher {
 	const size_t mem_size{ 64 };
 };
 //==============================================================================================
-auto getPassword(std::string&) -> void;
 auto print_os_data() -> void;
 auto get_login_by_id_from_packed_string(const std::string& sid) -> const std::string;
 

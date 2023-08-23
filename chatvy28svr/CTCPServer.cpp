@@ -204,7 +204,7 @@ auto CTCPServer::process_clients()->bool {
 #endif
 		char cl_ip[15]{(char)'/0'};
 		exit_loop = false;
-		int addrlen = sizeof(addr_c);
+		unsigned int addrlen = sizeof(addr_c);
 		_cl_socket = accept(_socket, (struct sockaddr*)&addr_c, &addrlen);
 #ifdef __linux__
 		if (_cl_socket < 0) {

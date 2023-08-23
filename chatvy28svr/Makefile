@@ -12,11 +12,11 @@ chatvy28srv.exe: $(SRC_SVR)
 else
 SRC_SVR = main.cpp CUser.cpp CTCPServer.cpp CMessage.cpp CDBAccess.cpp ../utils.cpp
 
-chatvy28srv.o: $(SRC_SVR) 
-HEADERS =  /usr/include #:$(UP_DIR)
+chatvy28srv.o: $(SRC_SVR)
+HEADERS =  /usr/include/mysql/ 
 LIBS = /usr/lib/x86_64-linux-gnu
 chatvy28srv.o: $(SRC_SVR) 
-	g++ -I$(HEADERS) -L$(LIBS) -o $@ $^ -lmysqlpp
+	g++ -I$(HEADERS) -L$(LIBS) -o $@ $^ -lmysqlpp -lmysqlclient -lpthread -ldl -lssl -lcrypto -lresolv -lm -lrt
 
 endif
 

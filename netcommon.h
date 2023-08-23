@@ -25,7 +25,7 @@
 #define MSG_LENGTH 1024
 #define USR_NAME_LEN 32
 
-enum MessageTypes:UINT8 {
+enum MessageTypes:uint8_t {
 	//To send by client----------------------------------------------------------
 	eAuth = 169,        //cl
 	eNewUser,			//cl
@@ -67,11 +67,6 @@ typedef struct {
 	char body[MSG_LENGTH]{'\0'};
 	char user[32]{'\0'};
 }IOMSG;
-//-----------------------------------------------------------------------------------------
-typedef struct ClientConnection {
-	SOCKET skt{ INVALID_SOCKET };
-	char s_ip[15]{ '\0' };
-}CLC;
 //-----------------------------------------------------------------------------------------
 static void clear_message(IOMSG& msg) {
 	msg.mtype = eNone;

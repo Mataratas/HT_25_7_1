@@ -1,20 +1,5 @@
 #include "utils.h"
 //===================================================================================
-auto getPassword(std::string& pwd) -> void {
-    pwd.erase();
-#if defined(_WIN32) || defined(_WIN64)
-    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    DWORD mode = 0;
-    GetConsoleMode(hStdin, &mode);
-    SetConsoleMode(hStdin, mode & (~ENABLE_ECHO_INPUT));
-    std::cin>>pwd;
-    SetConsoleMode(hStdin, mode);
-#elif defined(__linux__)
-	pwd = std::string(getpass(text.c_str()));
-#endif
-	std::cout << RESET<<std::endl;
-}
-//------------------------------------------------------------------------------------
 auto print_os_data() -> void {
 #ifdef __linux__
     struct utsname utsname;

@@ -67,5 +67,3 @@ struct cHasher {
 };
 //==============================================================================================
 auto print_os_data() -> void;
-auto get_login_by_id_from_packed_string(const std::string& sid) -> const std::string;
-
